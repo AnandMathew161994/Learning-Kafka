@@ -1,0 +1,106 @@
+
+version: '3'
+services:
+  # Spark Master
+  spark-master:
+    image: bitnami/spark:latest
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_UI_PORT=8080
+    ports:
+      - "8080:8080"  # Expose the Spark UI
+    volumes:
+      - ./:/app
+    networks:
+      - spark-kafka
+
+  # Spark Worker
+  spark-worker:
+    image: bitnami/spark:latest
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER=spark://spark-master:7077
+    depends_on:
+      - spark-master
+    networks:
+      - spark-kafka
+    
+
+  # Kafka
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: kafka
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL=PLAINTEXT
+      - KAFKA_CFG_LISTENER_PORT=9092
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CFG_LISTENER_NAMES=PLAINTEXT,CONTROLLER
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+
+    ports:
+      - "9092:9092"  # Kafka port
+    networks:
+      - spark-kafka
+    
+    
+
+
+  producer:
+    build:
+      context: .
+      dockerfile: dockerfile  # Use the Dockerfile to build the image
+    container_name: producer
+    volumes:
+      - ./:/app  # Mount the folder where your producer.py is located
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - kafka
+    networks:
+      - spark-kafka
+    command: >
+      bash -c "sleep 20 && python /app/producer.py"  # Adjust the sleep time if needed
+
+
+
+  spark-submit:
+    image: bitnami/spark:latest
+    depends_on:
+      - spark-master
+      - spark-worker
+      - kafka
+      - producer
+    volumes:
+      - ./:/app  # your spark.py should be in ./app
+    networks:
+      - spark-kafka
+    environment:
+    - USER=sparkuser
+    - HADOOP_USER_NAME=sparkuser
+
+    entrypoint: >
+      bash -c "sleep 20 &&
+      /opt/bitnami/spark/bin/spark-submit \
+      --master spark://spark-master:7077 \
+      --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 \
+      --conf spark.jars.ivy=/tmp/.ivy2 \
+      --conf spark.security.credentials.hadoopfs.enabled=false\
+      --conf spark.hadoop.security.authentication=none \
+      /app/spark.py"
+
+
+
+networks:
+  spark-kafka:
+    driver: bridge
