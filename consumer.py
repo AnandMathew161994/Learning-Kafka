@@ -3,7 +3,7 @@ import json
 
 # Configure the consumer
 consumer = Consumer({
-    'bootstrap.servers': 'kafka:29092,',
+    'bootstrap.servers': 'localhost:19092,localhost:19094,localhost:19095',
     'group.id': 'stock-price-group',
     'auto.offset.reset': 'earliest'  # Start from the earliest message if no offset is committed
 })
@@ -31,7 +31,7 @@ try:
         data = json.loads(msg.value().decode('utf-8'))
         
         # Print message with topic information
-        print(f"Received from {msg.topic()}: {data}")
+        print(f"Received from {msg.offset(), msg.partition(),msg.topic()}: {data}")
 
 except KeyboardInterrupt:
     print("Stopping consumer")

@@ -3,14 +3,14 @@ from confluent_kafka.admin import AdminClient, NewTopic
 import asyncio, json, random, time
 
 
-admin_client = AdminClient({'bootstrap.servers':'localhost:19092'})
+admin_client = AdminClient({'bootstrap.servers':'localhost:19092,localhost:19094,localhost:19095'})
 TOPICS = ['stock_ticks31']
 
 def ensure_topics_exist():
     existing_topics = admin_client.list_topics(timeout=5).topics
 
     new_topics = [
-        NewTopic(topic, num_partitions=4 ,replication_factor=1)
+        NewTopic(topic, num_partitions=4 ,replication_factor=2)
         for topic in TOPICS if topic not in existing_topics
     ]
 
@@ -27,7 +27,8 @@ def ensure_topics_exist():
         print("Topics already exist.")
 
 
-producer = Producer({'bootstrap.servers':'localhost:19092'})
+
+producer = Producer({'bootstrap.servers':'localhost:19092,localhost:19094,localhost:19095'})
 symbols = ["AAPL", "TSLA", "GOOG","BERK","LUCID","MFST","ASD","SAD"]  # 1000+ symbols
 
 symbol_prices = {sym: round(random.uniform(100, 500), 2) for sym in symbols}
