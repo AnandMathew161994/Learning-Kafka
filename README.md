@@ -20,6 +20,8 @@ KAFKA_CFG_LISTENERS=PLAINTEXT://:2,CONTROLLER://:9093,EXTERNAL://:4
     `localhost`
   - If another **container on the same network** needs to connect, use:  
     `kafka` (i.e., the service name)
+  - External listener connect to external advertised listener ( 3:4)
+  - Internal ports (2) are used to connect to advertised listener on same network
 
 ```bash
 KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:1,EXTERNAL://localhost:3
